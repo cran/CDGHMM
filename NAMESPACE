@@ -1,0 +1,8 @@
+export(cdghmm)
+importFrom("stats", "complete.cases", "cov", "glm", "kmeans",
+               "na.omit", "pnorm", "quasibinomial", "rnorm")
+importFrom("MASS", "ginv")
+importFrom("mvtnorm", "dmvnorm")
+importFrom("ramify", "eye","tr")
+importFrom("stats", "dist")
+importFrom("cluster", "silhouette")
