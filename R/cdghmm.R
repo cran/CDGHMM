@@ -1071,7 +1071,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
             penalty[,i]=max(uvec[1:m,i])*sum(log(uvec[1:m,i]))
           }
         }
-        ICL=BIC + 2*sum(!is.infinite(penalty))
+        ICL=BIC + 2*sum((penalty))
 
         return(list(mu=mu,sigma=sigma,gamma=gamma,delta=delta,alpha=alpha,beta=beta,llk=llk[iter],AIC=AIC,
                     BIC=BIC,ICL=ICL,Avg_Silhouette=avg_sil,probs=t(states$prob),states=states$id,beta=beta,mod=covtype))
