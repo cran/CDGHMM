@@ -2,31 +2,34 @@
 
 library(MASS)
 library(mvtnorm)
-library(ramify)
 library(cluster)
 
 
 #CDGHMM Models
+
+tr=function(mat){
+  return(sum(diag(mat)))
+}
 
 #EEA model with lists -----------------------------------------------------
 EEA_model = function(p, N, m, u, S, it, D.hat){
   #m is the number of states
   #S is the covariance matrix
   T.hat = diag(1,p)
-
+  
   if (it == 2){
     #d = diag(1,p)
     d=replicate(1, diag(1,p), simplify=F)
-    D.hat=replicate(m, matrix(ramify::eye(p),nrow=p,ncol=p), simplify=F)
+    D.hat=replicate(m, matrix(diag(p),nrow=p,ncol=p), simplify=F)
   }
   else{
     d = D.hat
     D.hat = replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   }
-
+  
   S.hat = replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   pi_g = rowSums(u)/N
-
+  
   kappa.list = list()
   for (r in 2:p){
     if (r == 2){
@@ -62,7 +65,7 @@ EEA_model = function(p, N, m, u, S, it, D.hat){
       #T update
       T.hat[r,1:(r-1)] = phi.hat
     }
-
+    
   }
   D.vec=rep(0,p) #1 x p
   for (g in 1:m){
@@ -72,7 +75,7 @@ EEA_model = function(p, N, m, u, S, it, D.hat){
     D.vec[1:p]=D.vec[1:p]+rowSums(D.hat[[g]])
   }
   D.hat1 = replicate(1,diag(D.vec), simplify=F)
-
+  
   for (g in 1:m){
     #S update
     S.hat[[g]] = t(T.hat)%*%ginv(D.hat1[[1]])%*%T.hat
@@ -86,11 +89,11 @@ EEA_model = function(p, N, m, u, S, it, D.hat){
 VVA_model = function(p, m, S){
   #m is the number of states
   #S is the covariance matrix
-
+  
   T.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   S.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
-
+  
   for (g in 1:m){
     T.hat[[g]] = diag(1,p)
     for (r in 2:p){
@@ -102,7 +105,7 @@ VVA_model = function(p, m, S){
       else{
         phi.hat = matrix(NA, nrow = 1, ncol = r-1)
         phi.hat = t((-1)*ginv(S[[g]][1:r-1,1:r-1])%*%S[[g]][r,1:(r-1)])
-
+        
         #T update
         T.hat[[g]][r,1:(r-1)] = phi.hat
       }
@@ -122,12 +125,12 @@ VVA_model = function(p, m, S){
 VVI_model = function(p, m, S){
   #m is the number of states
   #S is the covariance matrix
-
+  
   T.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   S.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   iso_delta = c() #matrix(0.0, 1, m)
-
+  
   for (g in 1:m){
     T.hat[[g]] = diag(1,p)
     for (r in 2:p){
@@ -143,11 +146,11 @@ VVI_model = function(p, m, S){
         T.hat[[g]][r,1:(r-1)] = phi.hat
       }
     }
-
+    
     #D update
     iso_delta[g] = 1/p*tr(T.hat[[g]]%*%S[[g]]%*%t(T.hat[[g]]))
-    D.hat[[g]] = iso_delta[g]*ramify::eye(p,p)
-
+    D.hat[[g]] = iso_delta[g]*diag(p)
+    
     #S update
     S.hat[[g]] = t(T.hat[[g]])%*%ginv(D.hat[[g]])%*%T.hat[[g]]
     S.hat[[g]] = ginv(S.hat[[g]])
@@ -160,12 +163,12 @@ VVI_model = function(p, m, S){
 VEA_model = function(p, N, m, u, S){
   # m is the number of states
   # S is the covariance matrix
-
+  
   T.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   S.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   pi_g = rowSums(u)/N
-
+  
   for (g in 1:m){
     #T update
     T.hat[[g]] = diag(1,p)
@@ -187,13 +190,13 @@ VEA_model = function(p, N, m, u, S){
     D.hat[[g]]= diag(diag(D.hat[[g]]), p, p)
     D.hat[[g]]= pi_g[g] * D.hat[[g]]
   }
-
+  
   D.vec=rep(0,p)
   for (g in 1:m){
     D.vec[1:p]=D.vec[1:p]+rowSums(D.hat[[g]])
   }
   D.hat1 = diag(D.vec)
-
+  
   for (g in 1:m){
     #S update
     S.hat[[g]] = t(T.hat[[g]])%*%ginv(D.hat1)%*%T.hat[[g]]
@@ -207,13 +210,13 @@ VEA_model = function(p, N, m, u, S){
 VEI_model = function(p, N, m, u, S){
   # m is the number of states
   # S is the covariance matrix
-
+  
   T.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   S.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   pi_g = rowSums(u)/N
   iso_delta = c() #matrix(0.0, 1, m)
-
+  
   for (g in 1:m){
     #T update
     T.hat[[g]] = diag(1,p)
@@ -233,10 +236,10 @@ VEI_model = function(p, N, m, u, S){
     #isotropic constraint update
     iso_delta[g] = pi_g[g]/p*tr(T.hat[[g]]%*%S[[g]]%*%t(T.hat[[g]]))
   }
-
+  
   iso_delta1 = sum(iso_delta)
-  D.hat1 = iso_delta1*ramify::eye(p,p)
-
+  D.hat1 = iso_delta1*diag(p)
+  
   for (g in 1:m){
     #S update
     S.hat[[g]] = t(T.hat[[g]])%*%ginv(D.hat1)%*%T.hat[[g]]
@@ -250,19 +253,19 @@ VEI_model = function(p, N, m, u, S){
 EEI_model = function(p, N, m, u, S, it, iso_delta){
   #m is the number of states
   #S is the covariance matrix
-
+  
   T.hat=replicate(1, matrix(0,nrow=p,ncol=p), simplify=F)
   D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   S.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   pi_g = rowSums(u)/N
-
+  
   if (it == 2){
     iso_delta = 1
   }
   else{
     iso_delta = iso_delta
   }
-
+  
   T.hat = diag(1,p)
   kappa.list = list()
   for (r in 2:p){
@@ -299,14 +302,14 @@ EEI_model = function(p, N, m, u, S, it, iso_delta){
       T.hat[r,1:(r-1)] = phi.hat
     }
   }
-
+  
   iso_delta1 = 0
   for (g in 1:m){
     #isotropic constraint update
     iso_delta1 = iso_delta1 + pi_g[g]/p*tr(T.hat%*%S[[g]]%*%t(T.hat))
   }
-  D.hat1 = iso_delta1*ramify::eye(p,p)
-
+  D.hat1 = iso_delta1*diag(p)
+  
   for (g in 1:m){
     #S update
     S.hat[[g]] = t(T.hat)%*%ginv(D.hat1)%*%T.hat
@@ -320,20 +323,20 @@ EEI_model = function(p, N, m, u, S, it, iso_delta){
 EVA_model = function(p, N, m, u, S, it, D.hat){
   #m is the number of states
   #S is the covariance matrix
-
+  
   T.hat=replicate(1, matrix(0,nrow=p,ncol=p), simplify=F)
   S.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   pi_g = rowSums(u)/N
-
+  
   if (it == 2){
-    d=replicate(m, matrix(ramify::eye(p),nrow=p,ncol=p), simplify=F)
+    d=replicate(m, matrix(diag(p),nrow=p,ncol=p), simplify=F)
     D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   }
   else{
     d = D.hat
     D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   }
-
+  
   T.hat = diag(1,p)
   kappa.list = list()
   for (r in 2:p){
@@ -370,13 +373,13 @@ EVA_model = function(p, N, m, u, S, it, D.hat){
       T.hat[r,1:(r-1)] = phi.hat
     }
   }
-
+  
   for (g in 1:m){
     #D update
     D.hat[[g]]= (T.hat%*%S[[g]]%*%t(T.hat))
     D.hat[[g]]= diag(diag(D.hat[[g]]), p, p)
   }
-
+  
   for (g in 1:m){
     #S update
     S.hat[[g]] = t(T.hat)%*%ginv(D.hat[[g]])%*%T.hat
@@ -389,22 +392,22 @@ EVA_model = function(p, N, m, u, S, it, D.hat){
 EVI_model = function(p, N, m, u, S, it, iso_delta){
   #m is the number of states
   #S is the covariance matrix
-
+  
   T.hat=replicate(1, matrix(0,nrow=p,ncol=p), simplify=F)
   D.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   S.hat=replicate(m, matrix(0,nrow=p,ncol=p), simplify=F)
   pi_g = rowSums(u)/N
-
+  
   if (it == 2){
     iso_delta = rep(1,m)
   }
   else{
     iso_delta = iso_delta
   }
-
+  
   T.hat = diag(1,p)
   kappa.list = list()
-
+  
   for (r in 2:p){
     if (r == 2){
       phi.hat = c()
@@ -438,14 +441,14 @@ EVI_model = function(p, N, m, u, S, it, iso_delta){
       T.hat[r,1:(r-1)] = phi.hat
     }
   }
-
+  
   for (g in 1:m){
     #delta update
     iso_delta[g] = 1/p*tr(T.hat%*%S[[g]]%*%t(T.hat))
   }
-
+  
   D.hat1 = diag(iso_delta, p, p)
-
+  
   for (g in 1:m){
     #S update
     S.hat[[g]] = t(T.hat)%*%ginv(D.hat1)%*%T.hat
@@ -692,10 +695,10 @@ local_decoding =function(x,m,mu,sigma,gamma,id,alpha,delta,missingMat,beta,type)
 }
 
 #---------------------------- EM Function
+#---------------------------- EM Function
 cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,beta=NULL,
-                   maxiter=10000,tol=1e-6,type="s",covtype="VVA")
-{
-
+                  maxiter=10000,tol=1e-6,type="s",covtype="VVA"){
+  
   warning("Must use 999 to indicate a dropped out observation and NA to indicate a missing observation.")
   warning("If data (x) is not sorted by id and time/visit/response number, the results will be incorrect.")
   if(type!="mar" & type!="s" & type!="sv" & type!="st" & type!="svt" & type!="st2" & type!="svt2") {
@@ -704,7 +707,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
   if(covtype!="VVA" & covtype!="EEA" & covtype!="VEA" & covtype!="EVA" & covtype!="VVI" & covtype!="VEI" & covtype!="EVI" & covtype!="EEI") {
     stop("No valid CDGHMM family member has been selected")
   }
-
+  x=as.matrix(x)
   drop=any(x==999,na.rm=TRUE)
   miss=any(is.na(x))
   n=length(unique(id))
@@ -715,9 +718,9 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
   xmiss[is.na(xmiss)] = 0
   meanV=colMeans(x,na.rm=T)
   xmiss=xmiss+sweep(missingMat, MARGIN=2,meanV, `*`)
-
+  
   missingMat2=array(NA, dim = c(t, p,n))
-
+  
   v1=c()
   v1=rep(1:t,n)
   for(i in 1:n){
@@ -725,8 +728,8 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       missingMat2[ti,,i]=ifelse(x[(i-1)*t+ti,]==999 & !is.na(x[(i-1)*t+ti,]),2,as.numeric(is.na(x[(i-1)*t+ti,])))
     }
   }
-
-
+  
+  
   #initializing delta (stationary distribution)
   if (is.null(delta) == T){
     delta = c()
@@ -737,20 +740,20 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       delta=c(delta,0)
     }
   }
-
+  
   ##initializing alpha
   if(miss){
-  if (is.null(alpha) == T){
-    alpha = array(-0.6755898,dim=c(m,p,t))
-  }
+    if (is.null(alpha) == T){
+      alpha = array(-0.6755898,dim=c(m,p,t))
+    }
   }
   #initializing beta
   if(miss){
-  if(type =="st2" | type=="svt2" & is.null(beta)==T){
-    beta = array(-0.6755898,dim=c(m,p,t))
+    if(type =="st2" | type=="svt2" & is.null(beta)==T){
+      beta = array(-0.6755898,dim=c(m,p,t))
+    }
   }
-  }
-
+  
   #initializing gamma (transition matrix)
   if (is.null(gamma) == T){
     if(!drop){
@@ -763,7 +766,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       gamma[m+1,m+1]=1
     }
   }
-
+  
   #dimensions of mu is (p, m)
   if (is.null(mu) == T){
     mu = list()
@@ -772,7 +775,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       mu[[j]] = group$centers[j,]
     }
   }
-
+  
   # covariance matrices (p,p,m)
   if (is.null(sigma) == T){
     sigma =list()
@@ -780,8 +783,8 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       sigma[[j]] = cov(na.omit(x[x[,1]!=999,1:p])) + rnorm(1, p)
     }
   }
-
-
+  
+  
   llk=c()
   x_imp=list()
   mu_imp=list()
@@ -792,12 +795,12 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
   alpha.next = alpha
   beta.next = beta
   it = 1
-
+  
   a = 1:(n*t)
   b = a[seq(1, length(a), t)]
-
+  
   expect2 = replicate(n*t, vector("list", m), simplify = FALSE)
-
+  
   for(z in 1:m){
     x_imp[[z]]=xmiss
   }
@@ -817,11 +820,10 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
   }
   missingMat3=missingMat[-tmp,]
   llk_i=matrix(NA,maxiter,n*t)
-  for (iter in 1:maxiter)
-  {
+  for (iter in 1:maxiter){
     it = it + 1
     fb  =  alpha_beta(x,m,gamma,mu,sigma,alpha,id,delta=delta,missingMat2,beta,type)
-
+    
     if(!drop){
       lallprobs = array(NA, dim = c(n*t, 1, m))
       for(i in 1:m){
@@ -838,15 +840,15 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       la = array(NA, dim = c(n*t, m+1, m+1))
       lb = array(NA, dim = c(n*t, m+1, m+1))
     }
-
+    
     la=fb$la
     lb=fb$lb
-
-
-
+    
+    
+    
     for(i in 1:n){
       llk_i[iter,(i*t-(t-1)):(i*t)]=fb$logLi[1,i]
-
+      
     }
     sigma_imp= list()
     for(i in 1:lengthND){
@@ -855,7 +857,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
         sigma_imp[[i]][[k]] = matrix(0,nrow=p,ncol=p)
       }
     }
-
+    
     uvec=matrix(NA,m,n*t)
     if(drop){
       v_vec=array(NA,dim=c(m,m+1,n*t))
@@ -866,7 +868,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
     }
     for (j in 1:m)
     {
-
+      
       if(drop){
         for (k in 1:(m+1))
         {
@@ -879,58 +881,46 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
         {
           for(i in 1:n){
             v_vec[j,k,(i*t-(t-2)):(i*t)]=gamma[j,k]*c(la[j,(i*t-(t-1)):(i*t-1)]*lallprobs[(i*t-(t-2)):(i*t),1,k]*lb[k,(i*t-(t-2)):(i*t)])
-
-
+            
+            
           }
         }
-
+        
       }
-
+      
       uvec[j,]=matrix(c(la[j,]*lb[j,]/colSums(la*lb)),nrow=1,ncol=n*t)
-
+      
       for (i in 1:lengthND){
         indO = which(missingMat3[i,]==0)
         indM = which(missingMat3[i,]==1)
         if (length(indM)>0){
-
+          
           if(length(indO)==0){
             mu_imp[[j]] = mu[[j]][indM]
             sigma_imp[[i]][[j]][indM,indM] = sigma[[j]][indM,indM]
-
+            
           }else{
-            mu_imp[[j]] = tryCatch(
-              {
-                mu[[j]][indM] + (sigma[[j]][indM,indO]%*%ginv(sigma[[j]][indO,indO]))%*%t(t(x_expected[[j]][i,indO]-mu[[j]][indO]))
-              },
-              error = function(e) {
-                mu[[j]][indM] + (sigma[[j]][indM,indO]%*%ginv(sigma[[j]][indO,indO]))%*%t(x_expected[[j]][i,indO]-mu[[j]][indO])
-              }
-            )
-
+            mu_imp[[j]] = mu[[j]][indM] + (sigma[[j]][indM,indO]%*%ginv(sigma[[j]][indO,indO]))%*%((x_expected[[j]][i,indO])-mu[[j]][indO])
+            
             sigma_imp[[i]][[j]][indM,indM] = sigma[[j]][indM,indM]-sigma[[j]][indM,indO]%*%ginv(sigma[[j]][indO,indO])%*%sigma[[j]][indO,indM]
           }
           x_expected[[j]][i,which(missingMat3[i,]==1)] = mu_imp[[j]]
-
+          
         }
-        expect2[[i]][[j]] = tryCatch(
-          {
-            sigma_imp[[i]][[j]] + t(x_expected[[j]][i,]-mu[[j]])%*%t(t(x_expected[[j]][i,]-mu[[j]]))
-          },
-          error = function(e) {
-            sigma_imp[[i]][[j]] + t(t(x_expected[[j]][i,]-mu[[j]]))%*%t(x_expected[[j]][i,]-mu[[j]])
-          }
-        )
-
+        
+        expect2[[i]][[j]]= sigma_imp[[i]][[j]] + t(t(x_expected[[j]][i,])-mu[[j]])%*%(t(x_expected[[j]][i,])-mu[[j]])
+        
+        
       }
-
+      
       sigma.next[[j]] = matrix(0,nrow=p,ncol=p)
-      mu.next[[j]]=(uvec[j,-tmp]%*%t(t(x_expected[[j]])))/sum(uvec[j,-tmp])
+      mu.next[[j]]=(uvec[j,-tmp]%*%(x_expected[[j]]))/sum(uvec[j,-tmp])
       uvec2=uvec[,-tmp]
       for(i in 1:lengthND){
         sigma.next[[j]]=sigma.next[[j]] + expect2[[i]][[j]]*uvec2[j,i]
       }
       sigma.next[[j]]=sigma.next[[j]]/sum(uvec[j,])
-
+      
       if(miss==T){
         if(type=="mar"){
           alpha.next=NULL
@@ -952,15 +942,15 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       }else{
         miss_p=0
       }
-
+      
       delta.next[j]=sum(uvec[j,b])
-
+      
     }
-
+    
     #update T,D,S
     if(covtype=="EEA"){
       if (it == 2){
-        D.hat =replicate(1, matrix(ramify::eye(p),nrow=p,ncol=p), simplify=F)
+        D.hat =replicate(1, matrix(diag(p),nrow=p,ncol=p), simplify=F)
       }
       else{
         D.hat = EEA_output$D.hat
@@ -968,19 +958,19 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       EEA_output = EEA_model(p,lengthND, m, uvec[1:m,-tmp], sigma.next, it, D.hat) #should this be u without 999?
       sigma = EEA_output$S.hat
       np = p*(p-1)/2 + p + m*p + m*(m-1) + (m-1)+miss_p
-
+      
     } else if(covtype=="VVA"){
-
+      
       sigma = VVA_model(p, m, sigma.next)
       np= m*(p + (p*p - p)/2 + p) + m*(m-1) + (m-1)+miss_p
-
+      
     } else if(covtype=="VEA"){
-
+      
       sigma = VEA_model(p,lengthND, m, uvec[1:m,-tmp], sigma.next)
       np = m*(p*(p-1)/2) + p + m*p + m*(m-1) + (m-1)+miss_p
-
+      
     } else if(covtype=="EVA"){
-
+      
       if (it == 2){
         iso_delta = NULL
       }
@@ -988,16 +978,16 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       sigma = EVA_output$S.hat
       D.hat = EVA_output$D.hat
       np = p*(p-1)/2 + m*p + m*p + m*(m-1) + (m-1)+miss_p
-
+      
     } else if(covtype=="VVI"){
-
+      
       sigma = VVI_model(p, m, sigma.next)
       np = m*(p*(p-1)/2) + m + m*p + m*(m-1) + (m-1)+miss_p
-
+      
     } else if(covtype=="VEI"){
       sigma = VEI_model(p,lengthND, m, uvec[1:m,-tmp], sigma.next)
       np = m*(p*(p-1)/2) + 1 + m*p + m*(m-1) + (m-1)+miss_p
-
+      
     } else if(covtype=="EVI"){
       if (it == 2){
         iso_delta = NULL
@@ -1006,7 +996,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       sigma = EVI_output$S.hat
       iso_delta = EVI_output$iso_delta
       np = p*(p-1)/2 + m + m*p + m*(m-1) + (m-1)+miss_p
-
+      
     } else if(covtype=="EEI"){
       if (it == 2){
         iso_delta = NULL
@@ -1015,18 +1005,18 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       sigma = EEI_output$S.hat
       iso_delta = EEI_output$iso_delta
       np = p*(p-1)/2 + 1 + m*p + m*(m-1) + (m-1)+miss_p
-
+      
     } else{
       sigma=sigma.next
       np=(m*p*(p+1))/2+ m*p + m*(m-1) + (m-1) +miss_p
     }
-
-
-
+    
+    
+    
     for(i in 1:(n*t)){
       v_vec2[,,i]=v_vec[,,i]/sum(v_vec[,,i])
     }
-
+    
     if(drop){
       for(g1 in 1:m){
         for(g2 in 1:(m+1)){
@@ -1034,7 +1024,7 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
         }
       }
       gamma.next = gamma.next/apply(gamma.next,1,sum)
-
+      
       gamma.next[m+1,1:m]=rep(0,m)
       gamma.next[m+1,m+1]=1
       delta.next = delta.next/n
@@ -1048,17 +1038,17 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
       gamma.next = gamma.next/apply(gamma.next,1,sum)
       delta.next = delta.next/n
     }
-
+    
     llk[iter]=fb$logLfinal
     #cat("---------------------------------------\n")
-
+    
     mu     = mu.next
     gamma      = gamma.next
     delta      = delta.next
     alpha = alpha.next
     beta = beta.next
-
-    if(iter>1){
+    
+    if(iter>5){
       if(abs(llk[iter]-llk[iter-1])<tol){
         AIC    = -2*(llk[iter]-np)
         BIC    = 2*llk[iter]-np*log(n*t)
@@ -1071,14 +1061,14 @@ cdghmm = function(x,m,id,mu=NULL,sigma=NULL,gamma=NULL,delta=NULL,alpha=NULL,bet
             penalty[,i]=max(uvec[1:m,i])*sum(log(uvec[1:m,i]))
           }
         }
-        ICL=BIC + 2*sum((penalty))
-
+        ICL=BIC + 2*sum((penalty[!is.na(penalty) & !is.infinite(penalty) & !is.nan(penalty)]))
+        
         return(list(mu=mu,sigma=sigma,gamma=gamma,delta=delta,alpha=alpha,beta=beta,llk=llk[iter],AIC=AIC,
                     BIC=BIC,ICL=ICL,Avg_Silhouette=avg_sil,probs=t(states$prob),states=states$id,beta=beta,mod=covtype))
       }
     }
-
   }
   message(paste("No convergence after",maxiter,"iterations"))
   NA
 }
+
